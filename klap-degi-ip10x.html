@@ -42,6 +42,11 @@
     footer { height: 55px; display: flex; gap: 2px; padding: 3px; background: #000; border-top: 1px solid #333; z-index: 1000; position: fixed; bottom: 0; left: 0; right: 0; padding-bottom: env(safe-area-inset-bottom); }
     button { flex: 1; background: #1a1a1a; color: #fff; border: 1px solid #444; border-radius: 4px; font-size: 8px; font-weight: bold; cursor: pointer; }
     button.active { background: var(--hrc-red) !important; border: 1px solid #fff; }
+    /* 追加：スタートライン未設定時の警告色 */
+button.warning-orange {
+    background-color: var(--hrc-orange) !important;
+    color: #000 !important;
+}
 </style>
 </head>
 <body>
@@ -103,7 +108,19 @@ let validDirection = null, sectorDirections = { s1: null, s2: null, s3: null };
 let s1_abs = 0, s2_abs = 0, s3_abs = 0, lastPassedSectorTime = 0, watchId = null;
 let pulsePerRev = 1, cooldownMs = 15000, bleDevice = null;
 const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
-
+// 追加：RELOADボタンの状態を更新する関数
+function updateReloadButtonStatus() {
+    const reloadBtn = document.getElementById('reloadBtn');
+    const startLat = localStorage.getItem('startLineP1Lat');
+    
+    if (!startLat) {
+        // スタートラインがなければオレンジ
+        reloadBtn.classList.add('warning-orange');
+    } else {
+        // 設定されていれば通常色
+        reloadBtn.classList.remove('warning-orange');
+    }
+}
 function handlePositionUpdate(currLat, currLon, now) {
     if (currLat === 0 && currLon === 0) return;
     if (swState === 1) {
@@ -355,6 +372,7 @@ window.onload = () => {
     });
     pulsePerRev = parseFloat(localStorage.getItem('pl1')) || 1;
     cooldownMs = parseInt(localStorage.getItem('lapCoolDownTime')) || 15000;
+    updateReloadButtonStatus();
     mainLoop();
 };
 if ('serviceWorker' in navigator) {
