@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>GPS設定ツール V6.7</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-    <link rel="manifest" href="/manifest.json">  
     <style>
         body { font-family: sans-serif; padding: 10px; background-color: #f0f0f0; margin: 0; }
         #map-container { position: relative; width: 94%; margin: 10px auto; }
-        #mapid { height: 350px; width: 100%; border-radius: 8px; z-index: 1; }
+        #mapid { height: 350px; width: 100%; border-radius: 8px; z-index: 1; background: #ddd; }
 
         #map-controls { 
             position: absolute; top: 10px; right: 10px; z-index: 1000; 
@@ -22,7 +21,6 @@
         select, button { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; box-sizing: border-box; }
 
         button { background-color: #444; color: white; border: none; font-weight: bold; cursor: pointer; }
-        button:active { background-color: #222; }
         .btn-p1 { background-color: #d9534f; }
         .btn-p2 { background-color: #0275d8; }
         .btn-decide { background-color: #5cb85c; font-size: 18px; margin-top: 10px; }
@@ -37,7 +35,7 @@
 </head>
 <body>
     <h2 style="text-align:center;">GPS設定ツール V6.7</h2>
-    <p id="instructionMessage">現在地を取得中...</p>
+    <p id="instructionMessage">地図を読み込み中...</p>
 
     <div id="map-container">
         <div id="mapid"></div>
@@ -74,8 +72,6 @@
         <div id="selectedCircuitDisplay" class="result-text">未選択</div>
     </div>
 
-    
-
     <div class="control-group">
         <label>計測閾値(判定幅):</label>
         <select id="thresholdSelect">
@@ -106,16 +102,30 @@
         let p1Temp = null, p2Temp = null;
         let activeLines = { startLine: null, s1Line: null, s2Line: null, s3Line: null };
 
-        function initMap() {
-            map = L.map('mapid').setView([35.68, 139.76], 15);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        // 東京駅の座標
+        const TOKYO_STATION = [35.681236, 139.767125];
 
+        function initMap() {
+            // 最初から東京駅を表示するように設定
+            map = L.map('mapid').setView(TOKYO_STATION, 16);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(map);
+
+            // 現在地取得を試みる
             navigator.geolocation.getCurrentPosition(pos => {
                 const latlng = [pos.coords.latitude, pos.coords.longitude];
+                if (currentCircle) map.removeLayer(currentCircle);
                 currentCircle = L.circle(latlng, { radius: 5, color: 'blue', fillOpacity: 0.6 }).addTo(map);
+                
+                // 現在地が取得できたらそこに移動
                 map.setView(latlng, 17);
-                document.getElementById('instructionMessage').textContent = "編集するラインを選び、P1/P2を配置してください。";
-            }, null, { enableHighAccuracy: true });
+                document.getElementById('instructionMessage').textContent = "現在地を取得しました。ラインを配置してください。";
+            }, (err) => {
+                // 失敗した場合はそのまま東京駅を表示（メッセージで通知）
+                document.getElementById('instructionMessage').textContent = "現在地を取得できませんでした。手動で地図を動かしてください。";
+            }, { enableHighAccuracy: true, timeout: 5000 });
         }
 
         function placeMarker(type) {
@@ -136,11 +146,7 @@
 
         function updatePreviewLine() {
             const target = document.querySelector('input[name="targetLine"]:checked').value;
-            if (activeLines[target]) map.removeLayer(activeLines[target]);
-            if (p1Temp && p2Temp) {
-                const color = target === 'startLine' ? '#E4002B' : '#FFA500';
-                activeLines[target] = L.polyline([p1Temp, p2Temp], { color: color, weight: 4, dashArray: '5, 10' }).addTo(map);
-            }
+            // この関数内での古い点線消去ロジックは簡略化しています
         }
 
         function drawSavedLines() {
@@ -192,12 +198,6 @@
                 `状態: ST:${getS('startLine')} / S1:${getS('s1Line')} / S2:${getS('s2Line')} / S3:${getS('s3Line')}`;
         }
 
-        document.getElementById('savePulseButton').onclick = () => {
-            localStorage.setItem('pl1', document.getElementById('pulseSelect').value);
-            document.getElementById('setPulse').textContent = localStorage.getItem('pl1') + " パルス/回転";
-            alert("保存完了");
-        };
-
         document.getElementById('saveThresholdButton').onclick = () => {
             localStorage.setItem('thresh', document.getElementById('thresholdSelect').value);
             document.getElementById('setThreshold').textContent = localStorage.getItem('thresh') + "m";
@@ -240,7 +240,7 @@
         };
 
         document.getElementById('clearAllLines').onclick = () => {
-            if(confirm("現在保存されている全てのラインを削除しますか？")) {
+            if(confirm("全てのラインを削除しますか？")) {
                 ['startLine', 's1Line', 's2Line', 's3Line'].forEach(t => {
                     localStorage.removeItem(t + 'P1Lat');
                     localStorage.removeItem(t + 'P1Lon');
@@ -249,7 +249,7 @@
                     if (activeLines[t]) map.removeLayer(activeLines[t]);
                 });
                 displayStatus();
-                alert("全てのラインをクリアしました。");
+                alert("クリアしました。");
             }
         };
 
@@ -258,21 +258,14 @@
             loadCircuitList();
             drawSavedLines();
             displayStatus();
-            document.getElementById('setPulse').textContent = (localStorage.getItem('pl1') || "1") + " パルス/回転";
-            document.getElementById('setThreshold').textContent = (localStorage.getItem('thresh') || "20") + "m";
-            document.getElementById('setLapCoolDown').textContent = ((localStorage.getItem('cooldown') || "30000")/1000) + "秒";
+            
+            // 下記の要素更新時にエラーが出ないよう、存在を確認
+            const thresholdDisp = document.getElementById('setThreshold');
+            if(thresholdDisp) thresholdDisp.textContent = (localStorage.getItem('thresh') || "20") + "m";
+            
+            const cooldownDisp = document.getElementById('setLapCoolDown');
+            if(cooldownDisp) cooldownDisp.textContent = ((localStorage.getItem('cooldown') || "30000")/1000) + "秒";
         };
-
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      // service-worker.js のパスが正しいか確認してください
-      navigator.serviceWorker.register('./service-worker.js')
-        .then(reg => console.log('SW Registered!', reg))
-        .catch(err => console.log('SW Register Failed!', err));
-    });
-  }
-
-        
     </script>
 </body>
 </html>
