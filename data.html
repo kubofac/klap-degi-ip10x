@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>GPX QUICK SAVE</title>
+    <style>
+        :root { --hrc-red: #E4002B; }
+        * { box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, sans-serif; 
+            background: #000; color: #fff; 
+            margin: 0; padding: 20px; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            height: 100dvh; text-align: center;
+        }
+        .container {
+            width: 100%; max-width: 400px;
+            border: 2px dashed var(--hrc-red);
+            border-radius: 25px;
+            padding: 30px 20px;
+            background: #111;
+        }
+        h2 { color: var(--hrc-red); margin: 0 0 10px 0; font-size: 1.5rem; }
+        p { font-size: 0.9rem; color: #ccc; margin-bottom: 25px; line-height: 1.5; }
+        
+        /* 巨大なペースト専用エリア */
+        #inputArea {
+            width: 100%; height: 180px;
+            background: #222; color: #0f0;
+            border: 1px solid #444; border-radius: 15px;
+            padding: 15px; font-family: monospace; font-size: 16px;
+            text-align: center; outline: none; resize: none;
+        }
+        #inputArea:focus { border-color: #0f0; background: #000; }
+
+        .success-msg {
+            margin-top: 20px; color: #28a745; font-weight: bold; display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>GPX SAVE</h2>
+        <p>下の枠をタップして<br><strong>「ペースト」</strong>してください</p>
+
+        <textarea id="inputArea" placeholder="TAP & PASTE HERE"></textarea>
+        
+        <div id="status" class="success-msg">✅ SAVED TO iPHONE</div>
+    </div>
+
+    <p style="margin-top: 30px; font-size: 11px; color: #666;">
+        ※貼り付けた瞬間に保存ダイアログが表示されます
+    </p>
+
+    <script>
+        const area = document.getElementById('inputArea');
+        const status = document.getElementById('status');
+
+        // 入力をリアルタイムで監視
+        area.addEventListener('input', function() {
+            const val = this.value.trim();
+            
+            // GPXデータが含まれているかチェック
+            if (val.includes('<gpx')) {
+                saveGPX(val);
+                
+                // 完了時の演出
+                status.style.display = "block";
+                this.style.borderColor = "#28a745";
+                
+                // 次回のために3秒後にリセット
+                setTimeout(() => {
+                    this.value = "";
+                    this.style.borderColor = "#444";
+                    status.style.display = "none";
+                }, 3000);
+            }
+        });
+
+        function saveGPX(text) {
+            try {
+                const blob = new Blob([text], { type: 'application/gpx+xml' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                
+                // ファイル名に現在時刻を付与
+                const now = new Date();
+                const time = String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0');
+                
+                a.href = url;
+                a.download = `Log_${time}.gpx`;
+                document.body.appendChild(a);
+                a.click();
+                
+                // クリーンアップ
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 1000);
+            } catch (e) {
+                alert("エラー: " + e.message);
+            }
+        }
+
+        // ページ読み込み時に自動でフォーカス（キーボード準備）
+        window.onload = () => area.focus();
+    </script>
+</body>
+</html>
