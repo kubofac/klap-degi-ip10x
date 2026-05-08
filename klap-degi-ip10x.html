@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>KLAP DEGI x12.6 - FINAL REVISION</title>
+    <title>KLAP DEGI 
+        
+        x12.6 - FINAL REVISION</title>
     <style>
         :root { --hrc-red: #E4002B; --hrc-white: #ffffff; --bg-dark: #000000; --hrc-orange: #FFA500; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: var(--bg-dark); color: var(--hrc-white); font-family: 'Arial Black', sans-serif; overflow: hidden; position: fixed; }
@@ -336,11 +338,13 @@ document.getElementById('gpxBtn').onclick = async function() {
     // --- GPX文字列の生成 ---
     let gpx = `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="KLAP_DEGI" xmlns="http://www.topografix.com/GPX/1/1">
-<trk><name>KLAP_${new Date().getTime()}</name>`;
-    
+<trk><name>KLAP_${new Date().getTime()}</name>
+<trkseg>`; // セグメントをここで開始
+
+    // 全ラップのポイントを古い順から一つのセグメントにまとめる
+    // lapRecordsはunshiftで追加されているので、[...].reverse()で古い順（走行順）にする
     [...lapRecords].reverse().forEach(lap => {
-        gpx += `\n<trkseg>`;
-        if (lap.points) {
+        if (lap.points && lap.points.length > 0) {
             lap.points.forEach(p => {
                 gpx += `\n<trkpt lat="${p.lat}" lon="${p.lon}">
 <time>${p.time}</time>
@@ -348,16 +352,15 @@ document.getElementById('gpxBtn').onclick = async function() {
 </trkpt>`;
             });
         }
-        gpx += `\n</trkseg>`;
     });
-    gpx += `\n</trk>\n</gpx>`;
 
-    // --- Bluefy / iOS 用の共有処理 ---
+    gpx += `\n</trkseg>\n</trk>\n</gpx>`; // セグメントをここで閉じる
+
+    // --- 以降、Bluefy / iOS 用の共有処理（変更なし） ---
     const filename = `klap_${new Date().getTime()}.gpx`;
     const blob = new Blob([gpx], { type: 'application/gpx+xml' });
     const file = new File([blob], filename, { type: 'application/gpx+xml' });
 
-    // Web Share API が使えるか確認
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
             await navigator.share({
@@ -366,12 +369,9 @@ document.getElementById('gpxBtn').onclick = async function() {
                 text: '走行ログを共有します'
             });
         } catch (err) {
-            if (err.name !== 'AbortError') {
-                alert('共有に失敗しました: ' + err.message);
-            }
+            if (err.name !== 'AbortError') alert('共有に失敗しました: ' + err.message);
         }
     } else {
-        // Share API が使えない場合のバックアップ（古い方法）
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -380,7 +380,6 @@ document.getElementById('gpxBtn').onclick = async function() {
         a.click();
         document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(url), 1000);
-        alert("ブラウザがファイル共有に対応していないため、ダウンロードを試みました。");
     }
 };
 
