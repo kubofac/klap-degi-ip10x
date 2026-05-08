@@ -208,15 +208,28 @@ function updateLapList() {
 
 // --- GPS / BLE 処理 ---
 document.getElementById('btConnect').onclick = async function() {
+    const btn = this;
     try {
-        const device = await navigator.bluetooth.requestDevice({ filters: [{ services: [SERVICE_UUID] }] });
+        // 1. ボタンを押した瞬間にオレンジにする
+        btn.style.backgroundColor = "var(--hrc-orange)";
+        btn.style.color = "#000"; // 文字を見やすく黒に
+
+        const device = await navigator.bluetooth.requestDevice({ 
+            filters: [{ services: [SERVICE_UUID] }] 
+        });
         const server = await device.gatt.connect();
         const service = await server.getPrimaryService(SERVICE_UUID);
         const char = await service.getCharacteristic(PULSE_UUID);
-        this.classList.add('active');
+        
         document.getElementById('intGpsBtn').classList.remove('active');
         if(watchId) navigator.geolocation.clearWatch(watchId);
+
         char.addEventListener('characteristicvaluechanged', (e) => {
+            // 2. 実際にデータが届いたら赤にする
+            btn.style.backgroundColor = "var(--hrc-red)";
+            btn.style.color = "#fff";
+            btn.classList.add('active');
+
             const d = e.target.value;
             if (d.byteLength >= 13) {
                 const lat = d.getInt32(0, true) / 1000000;
@@ -226,15 +239,34 @@ document.getElementById('btConnect').onclick = async function() {
             }
         });
         await char.startNotifications();
-    } catch (e) { alert(e); }
+    } catch (e) { 
+        // エラー（キャンセル等）が起きたら元に戻す
+        btn.style.backgroundColor = "#111";
+        btn.style.color = "#fff";
+        console.log(e); 
+    }
 };
 
 document.getElementById('intGpsBtn').onclick = function() {
-    if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; this.classList.remove('active'); }
-    else {
-        this.classList.add('active');
+    const btn = this;
+    if (watchId) { 
+        navigator.geolocation.clearWatch(watchId); 
+        watchId = null; 
+        btn.classList.remove('active');
+        btn.style.backgroundColor = "#111";
+    } else {
+        // 取得開始前（ボタン押下時）はオレンジ
+        btn.style.backgroundColor = "var(--hrc-orange)";
+        btn.style.color = "#000";
         document.getElementById('btConnect').classList.remove('active');
+        document.getElementById('btConnect').style.backgroundColor = "#111";
+
         watchId = navigator.geolocation.watchPosition(p => {
+            // 実際に位置が取れたら赤
+            btn.style.backgroundColor = "var(--hrc-red)";
+            btn.style.color = "#fff";
+            btn.classList.add('active');
+            
             currentSpeedKmh = (p.coords.speed || 0) * 3.6;
             handlePositionUpdate(p.coords.latitude, p.coords.longitude, Date.now(), p.coords.accuracy);
         }, null, { enableHighAccuracy: true });
