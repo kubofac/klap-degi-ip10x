@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>KLAP DEGI V12.6 - FINAL REVISION</title>
+    <style>
+        :root { --hrc-red: #E4002B; --hrc-white: #ffffff; --bg-dark: #000000; --hrc-orange: #FFA500; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: var(--bg-dark); color: var(--hrc-white); font-family: 'Arial Black', sans-serif; overflow: hidden; position: fixed; }
+        
+        /* メインUI：指示通りの配置 */
+        .main-ui-container { position: absolute; left: 32%; top: 42%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; z-index: 5; width: 60%; pointer-events: none; }
+        #display1 { font-size: 19vh; font-weight: 900; line-height: 0.8; white-space: nowrap; }
+
+        #sector-container { display: flex; justify-content: center; gap: 25px; font-size: 6vh; font-weight: 900; margin-top: 2vh; }
+        .sec-name { color: var(--hrc-red); margin-right: 6px; font-size: 2.8vh; }
+
+        .sub-times { display: flex; flex-direction: column; align-items: center; margin-top: 4vh; gap: 2.5vh; }
+        #display { font-size: 3.5vh; color: #fff; font-weight: 900; opacity: 0.8; }
+        #best-display { font-size: 9.5vh; color: #fff; font-weight: 900; line-height: 0.9; }
+        .best-label { font-size: 2.2vh; color: var(--hrc-red); margin-right: 15px; }
+
+        /* 右側パネル：ご提示のスタイルを適用 */
+        .right-section-wrapper { position: absolute; right: 20px; top: 15px; bottom: 85px; display: flex; gap: 15px; align-items: flex-start; z-index: 6; pointer-events: none; }
+        #lap-panel { width: 150px; height: 100%; display: flex; flex-direction: column; }
+        #lap { flex: 1; overflow-y: auto; scrollbar-width: none; pointer-events: auto; text-align: right; }
+        
+        .lap-row { display: flex; justify-content: flex-end; align-items: baseline; gap: 15px; padding: 6px 0; border-bottom: 1px solid #222; font-size: 22px; }
+        .lap-row span:first-child { color: #888; font-size: 22px; font-weight: normal; } /* L番号 */
+        .lap-row span:last-child { font-family: 'Arial Black', sans-serif; min-width: 110px; text-align: right; } /* タイム */
+        .best-lap { color: var(--hrc-red) !important; font-weight: bold; }
+
+        .data-column { min-width: 90px; }
+        .label { font-size: 11px; color: var(--hrc-red); font-weight: bold; }
+        .val { font-size: 42px; font-weight: 900; line-height: 0.85; }
+
+        /* デバッグ情報：画面下部に目立たないよう配置 */
+        #debug-info { position: fixed; bottom: 65px; left: 10px; font-family: monospace; font-size: 10px; color: #444; z-index: 10; pointer-events: none; }
+
+        footer { height: 60px; display: flex; gap: 2px; padding: 4px; background: #000; border-top: 1px solid #333; position: fixed; bottom: 0; left: 0; right: 0; z-index: 9999; padding-bottom: env(safe-area-inset-bottom); }
+        button { flex: 1; background: #111; color: #fff; border: 1px solid #333; border-radius: 4px; font-size: 9px; font-weight: bold; cursor: pointer; }
+        button.active { background: var(--hrc-red) !important; border-color: #fff; }
+        
+        #history-page { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 10000; padding: 20px; box-sizing: border-box; }
+        .close-btn { background: var(--hrc-red); padding: 15px; text-align: center; font-weight: bold; margin-bottom: 10px; }
+        #history-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 14px; }
+        #history-table th { color: var(--hrc-red); border-bottom: 2px solid var(--hrc-red); padding: 8px; }
+        #history-table td { padding: 8px; border-bottom: 1px solid #222; }
+    </style>
+</head>
+<body>
+
+<div id="dashboard">
+    <div class="main-ui-container">
+        <div id="display1">00:00.000</div>
+        <div id="sector-container">
+            <span class="sec-item"><span class="sec-name">S1:</span><span id="s1_val">--.---</span></span>
+            <span class="sec-item"><span class="sec-name">S2:</span><span id="s2_val">--.---</span></span>
+            <span class="sec-item"><span class="sec-name">S3:</span><span id="s3_val">--.---</span></span>
+        </div>
+        <div class="sub-times">
+            <div id="display">TOTAL 00:00.000</div>
+            <div id="best-display"><span class="best-label">BEST LAP</span>00:00.000</div>
+        </div>
+    </div>
+
+    <div class="right-section-wrapper">
+        <div id="lap-panel">
+            <div class="label" style="text-align:right; margin-bottom:5px;">HISTORY</div>
+            <div id="lap"></div>
+        </div>
+        <div class="data-column">
+            <div class="data-box"><div class="label">SPD</div><div class="val" id="speed_val">0</div></div>
+            <div class="data-box"><div class="label">MAX</div><div class="val" id="max_speed_val" style="color: var(--hrc-orange);">0</div></div>
+        </div>
+    </div>
+
+    <div id="debug-info">
+        LAT: <span id="debug-lat">0.000000</span> | LON: <span id="debug-lon">0.000000</span> | ACC: <span id="debug-acc">0</span>m | DIR: <span id="debug-dir">0</span>
+    </div>
+
+    <footer>
+        <button id="btConnect">BLE</button>
+        <button id="intGpsBtn">INT GPS</button>
+        <button id="startBtn">START</button>
+        <button id="lapBtn">LAP</button>
+        <button id="historyBtn">HISTORY</button>
+        <button id="gpxBtn" style="display:none; background:var(--hrc-orange); color:#000;">GPX</button>
+        <button onclick="location.reload()">RELOAD</button>
+    </footer>
+</div>
+
+<div id="history-page">
+    <div class="close-btn" onclick="document.getElementById('history-page').style.display='none'">CLOSE</div>
+    <div style="overflow-y: auto; height: calc(100% - 80px);">
+        <table id="history-table">
+            <thead>
+                <tr><th>LAP</th><th>S1</th><th>S2</th><th>S3</th><th>S4</th><th>TIME</th><th>MAX</th></tr>
+            </thead>
+            <tbody id="history-body"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+'use strict';
+
+const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
+const PULSE_UUID = "f4deb353-a4cf-4ffb-badb-2a5f2e3bb630";
+
+let swState = 0, startTime = 0, lapStartTime = 0, lapRecords = [];
+let currentSpeedKmh = 0, maxSpeedInLap = 0, lastPos = null;
+let isFrozen = false, freezeDisplayTime = "00:00.000", freezeUntil = 0;
+let currentLapPoints = [];
+let validDirection = null;
+let sectorDirections = { s1: null, s2: null, s3: null };
+let lines = { startLine: null, s1Line: null, s2Line: null, s3Line: null };
+let s1_abs = 0, s2_abs = 0, s3_abs = 0;
+let watchId = null, lapCounter = 0; 
+const cooldownMs = 15000;
+
+function handlePositionUpdate(currLat, currLon, now, acc = 0) {
+    if (currLat === 0 && currLon === 0) return;
+    document.getElementById('debug-lat').textContent = currLat.toFixed(6);
+    document.getElementById('debug-lon').textContent = currLon.toFixed(6);
+    document.getElementById('debug-acc').textContent = Math.round(acc);
+
+    if (swState === 1) {
+        if (currentSpeedKmh > maxSpeedInLap) maxSpeedInLap = Math.round(currentSpeedKmh);
+        const cur = { lat: currLat, lon: currLon, time: now };
+        currentLapPoints.push({ lat: cur.lat, lon: cur.lon, time: new Date().toISOString(), speed: currentSpeedKmh });
+
+        if (lastPos) {
+            const hitSL = getIntersection(lastPos, cur, lines.startLine);
+            if (hitSL) {
+                document.getElementById('debug-dir').textContent = hitSL.dir;
+                if (validDirection === null) validDirection = hitSL.dir;
+                if (hitSL.dir === validDirection && (hitSL.time - (lapStartTime || startTime) > cooldownMs)) {
+                    processLap(hitSL.time, false);
+                }
+            }
+            if (lapStartTime > 0) {
+                ['s1', 's2', 's3'].forEach(s => {
+                    const hit = getIntersection(lastPos, cur, lines[s + 'Line']);
+                    if (hit) {
+                        if (sectorDirections[s] === null) sectorDirections[s] = hit.dir;
+                        if (hit.dir === sectorDirections[s]) {
+                            const absT = (hit.time - lapStartTime) / 1000;
+                            if (s === 's1' && s1_abs === 0) { s1_abs = absT; document.getElementById('s1_val').textContent = s1_abs.toFixed(3); }
+                            else if (s === 's2' && s2_abs === 0 && s1_abs > 0) { s2_abs = absT; document.getElementById('s2_val').textContent = (s2_abs - s1_abs).toFixed(3); }
+                            else if (s === 's3' && s3_abs === 0 && s2_abs > 0) { s3_abs = absT; document.getElementById('s3_val').textContent = (s3_abs - s2_abs).toFixed(3); }
+                        }
+                    }
+                });
+            }
+        }
+        lastPos = cur;
+    }
+}
+
+function processLap(hitTime, isManual) {
+    const base = lapStartTime || startTime;
+    const lapTimeMs = hitTime - base;
+    const totalSec = lapTimeMs / 1000;
+    const s4_val = (s3_abs > 0) ? (totalSec - s3_abs).toFixed(3) : "--.---";
+
+    lapCounter++; // L1, L2... と増やす
+
+    const lapData = {
+        no: lapCounter,
+        time: lapTimeMs,
+        s1: document.getElementById('s1_val').textContent,
+        s2: document.getElementById('s2_val').textContent,
+        s3: document.getElementById('s3_val').textContent,
+        s4: s4_val,
+        max: maxSpeedInLap,
+        points: [...currentLapPoints]
+    };
+
+    lapRecords.unshift(lapData);
+    updateLapList();
+
+    if (!isManual) {
+        isFrozen = true;
+        freezeDisplayTime = timeFormat(lapTimeMs);
+        freezeUntil = Date.now() + 15000;
+    }
+
+    lapStartTime = hitTime;
+    currentLapPoints = [];
+    maxSpeedInLap = 0;
+    s1_abs = 0; s2_abs = 0; s3_abs = 0;
+    ['s1_val', 's2_val', 's3_val'].forEach(id => document.getElementById(id).textContent = "--.---");
+}
+
+// 指示通りの「L1, L2」と「右寄せ」を実現する更新関数
+function updateLapList() {
+    if (lapRecords.length === 0) return;
+    const best = Math.min(...lapRecords.map(r => r.time));
+    document.getElementById('best-display').innerHTML = `<span class="best-label">BEST LAP</span>${timeFormat(best)}`;
+    
+    document.getElementById('lap').innerHTML = lapRecords.map(r => `
+        <div class="lap-row ${r.time === best ? 'best-lap' : ''}">
+            <span>L${r.no}</span>
+            <span>${timeFormat(r.time)}</span>
+        </div>`).join('');
+}
+
+// --- GPS / BLE 処理 ---
+document.getElementById('btConnect').onclick = async function() {
+    try {
+        const device = await navigator.bluetooth.requestDevice({ filters: [{ services: [SERVICE_UUID] }] });
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService(SERVICE_UUID);
+        const char = await service.getCharacteristic(PULSE_UUID);
+        this.classList.add('active');
+        document.getElementById('intGpsBtn').classList.remove('active');
+        if(watchId) navigator.geolocation.clearWatch(watchId);
+        char.addEventListener('characteristicvaluechanged', (e) => {
+            const d = e.target.value;
+            if (d.byteLength >= 13) {
+                const lat = d.getInt32(0, true) / 1000000;
+                const lon = d.getInt32(4, true) / 1000000;
+                currentSpeedKmh = d.getUint16(8, true);
+                handlePositionUpdate(lat, lon, Date.now());
+            }
+        });
+        await char.startNotifications();
+    } catch (e) { alert(e); }
+};
+
+document.getElementById('intGpsBtn').onclick = function() {
+    if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; this.classList.remove('active'); }
+    else {
+        this.classList.add('active');
+        document.getElementById('btConnect').classList.remove('active');
+        watchId = navigator.geolocation.watchPosition(p => {
+            currentSpeedKmh = (p.coords.speed || 0) * 3.6;
+            handlePositionUpdate(p.coords.latitude, p.coords.longitude, Date.now(), p.coords.accuracy);
+        }, null, { enableHighAccuracy: true });
+    }
+};
+
+// --- その他基本処理 ---
+function getIntersection(p1, p2, line) {
+    if (!line) return null;
+    const x1=p1.lon, y1=p1.lat, x2=p2.lon, y2=p2.lat, x3=line.p1.lon, y3=line.p1.lat, x4=line.p2.lon, y4=line.p2.lat;
+    const den = (y4-y3)*(x2-x1)-(x4-x3)*(y2-y1);
+    if (Math.abs(den)<1e-12) return null;
+    const t=((x4-x3)*(y1-y3)-(y4-y3)*(x1-x3))/den, u=((x2-x1)*(y1-y3)-(y2-y1)*(x1-x3))/den;
+    if (t>=0 && t<=1 && u>=0 && u<=1) return { time: p1.time+(p2.time-p1.time)*t, dir: ((x4-x3)*(y2-y1)-(y4-y3)*(x2-x1))>0?1:-1 };
+    return null;
+}
+
+function timeFormat(ms){ 
+    const m=Math.floor(ms/60000), s=Math.floor((ms%60000)/1000), ms2=Math.floor(ms%1000); 
+    return `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}.${ms2.toString().padStart(3,'0')}`; 
+}
+
+function mainLoop() {
+    const now = Date.now();
+    if (swState === 1) {
+        document.getElementById('display').textContent = "TOTAL " + timeFormat(now - startTime);
+        const d1 = document.getElementById('display1');
+        if (isFrozen && now < freezeUntil) { d1.textContent = freezeDisplayTime; d1.style.color = "var(--hrc-orange)"; }
+        else { d1.textContent = timeFormat(now - (lapStartTime || startTime)); d1.style.color = "white"; isFrozen = false; }
+    }
+    document.getElementById('speed_val').textContent = Math.round(currentSpeedKmh);
+    document.getElementById('max_speed_val').textContent = maxSpeedInLap;
+    requestAnimationFrame(mainLoop);
+}
+
+document.getElementById('startBtn').onclick = function() {
+    if (swState !== 1) { 
+        swState = 1; startTime = Date.now(); lapStartTime = 0; lapRecords = []; lapCounter = 0;
+        validDirection = null; sectorDirections = { s1: null, s2: null, s3: null };
+        this.classList.add('active'); document.getElementById('gpxBtn').style.display = 'none';
+        ['s1_val', 's2_val', 's3_val'].forEach(id => document.getElementById(id).textContent = "--.---");
+    } else { 
+        swState = 2; this.classList.remove('active'); document.getElementById('gpxBtn').style.display = 'block';
+    }
+};
+
+document.getElementById('lapBtn').onclick = () => { if(swState===1) processLap(Date.now(), true); };
+
+document.getElementById('historyBtn').onclick = () => {
+    const bT = lapRecords.length > 0 ? Math.min(...lapRecords.map(r => r.time)) : 0;
+    document.getElementById('history-body').innerHTML = lapRecords.map(r => `
+        <tr><td>L${r.no}</td><td>${r.s1}</td><td>${r.s2}</td><td>${r.s3}</td><td>${r.s4}</td>
+        <td style="${r.time === bT ? 'color:var(--hrc-red);' : ''}">${timeFormat(r.time)}</td>
+        <td>${r.max}</td></tr>`).join('');
+    document.getElementById('history-page').style.display = 'block';
+};
+
+document.getElementById('gpxBtn').onclick = function() {
+    if (lapRecords.length === 0) return;
+    let gpx = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="KLAP_DEGI" xmlns="http://www.topografix.com/GPX/1/1"><trk><name>KLAP_${new Date().getTime()}</name>`;
+    [...lapRecords].reverse().forEach(lap => {
+        gpx += `\n<trkseg>`;
+        if (lap.points) lap.points.forEach(p => { gpx += `\n<trkpt lat="${p.lat}" lon="${p.lon}"><time>${p.time}</time><extensions><speed>${(p.speed/3.6).toFixed(2)}</speed></extensions></trkpt>`; });
+        gpx += `\n</trkseg>`;
+    });
+    gpx += `\n</trk>\n</gpx>`;
+    const blob = new Blob([gpx], { type: 'application/gpx+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `klap_${new Date().getTime()}.gpx`; a.click();
+};
+
+window.onload = () => {
+    ['startLine', 's1Line', 's2Line', 's3Line'].forEach(key => {
+        const lat = localStorage.getItem(key + 'P1Lat');
+        if (lat) lines[key] = { p1: { lat: parseFloat(lat), lon: parseFloat(localStorage.getItem(key + 'P1Lon')) }, p2: { lat: parseFloat(localStorage.getItem(key + 'P2Lat')), lon: parseFloat(localStorage.getItem(key + 'P2Lon')) } };
+    });
+    mainLoop();
+};
+</script>
+</body>
+</html>
