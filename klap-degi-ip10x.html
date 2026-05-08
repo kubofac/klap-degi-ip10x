@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>KLAP DEGI V12.6 - FINAL REVISION</title>
+    <title>KLAP DEGI x12.6 - FINAL REVISION</title>
     <style>
         :root { --hrc-red: #E4002B; --hrc-white: #ffffff; --bg-dark: #000000; --hrc-orange: #FFA500; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: var(--bg-dark); color: var(--hrc-white); font-family: 'Arial Black', sans-serif; overflow: hidden; position: fixed; }
@@ -327,18 +327,61 @@ document.getElementById('historyBtn').onclick = () => {
     document.getElementById('history-page').style.display = 'block';
 };
 
-document.getElementById('gpxBtn').onclick = function() {
-    if (lapRecords.length === 0) return;
-    let gpx = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="KLAP_DEGI" xmlns="http://www.topografix.com/GPX/1/1"><trk><name>KLAP_${new Date().getTime()}</name>`;
+document.getElementById('gpxBtn').onclick = async function() {
+    if (lapRecords.length === 0) {
+        alert("保存するデータがありません");
+        return;
+    }
+
+    // --- GPX文字列の生成 ---
+    let gpx = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="KLAP_DEGI" xmlns="http://www.topografix.com/GPX/1/1">
+<trk><name>KLAP_${new Date().getTime()}</name>`;
+    
     [...lapRecords].reverse().forEach(lap => {
         gpx += `\n<trkseg>`;
-        if (lap.points) lap.points.forEach(p => { gpx += `\n<trkpt lat="${p.lat}" lon="${p.lon}"><time>${p.time}</time><extensions><speed>${(p.speed/3.6).toFixed(2)}</speed></extensions></trkpt>`; });
+        if (lap.points) {
+            lap.points.forEach(p => {
+                gpx += `\n<trkpt lat="${p.lat}" lon="${p.lon}">
+<time>${p.time}</time>
+<extensions><speed>${(p.speed/3.6).toFixed(2)}</speed></extensions>
+</trkpt>`;
+            });
+        }
         gpx += `\n</trkseg>`;
     });
     gpx += `\n</trk>\n</gpx>`;
+
+    // --- Bluefy / iOS 用の共有処理 ---
+    const filename = `klap_${new Date().getTime()}.gpx`;
     const blob = new Blob([gpx], { type: 'application/gpx+xml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `klap_${new Date().getTime()}.gpx`; a.click();
+    const file = new File([blob], filename, { type: 'application/gpx+xml' });
+
+    // Web Share API が使えるか確認
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+            await navigator.share({
+                files: [file],
+                title: 'KLAP GPX Data',
+                text: '走行ログを共有します'
+            });
+        } catch (err) {
+            if (err.name !== 'AbortError') {
+                alert('共有に失敗しました: ' + err.message);
+            }
+        }
+    } else {
+        // Share API が使えない場合のバックアップ（古い方法）
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        alert("ブラウザがファイル共有に対応していないため、ダウンロードを試みました。");
+    }
 };
 
 window.onload = () => {
