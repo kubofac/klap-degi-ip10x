@@ -210,9 +210,9 @@ function updateLapList() {
 document.getElementById('btConnect').onclick = async function() {
     const btn = this;
     try {
-        // 1. ボタンを押した瞬間にオレンジにする
+        // 1. 接続試行中はオレンジ
         btn.style.backgroundColor = "var(--hrc-orange)";
-        btn.style.color = "#000"; // 文字を見やすく黒に
+        btn.style.color = "#000";
 
         const device = await navigator.bluetooth.requestDevice({ 
             filters: [{ services: [SERVICE_UUID] }] 
@@ -222,25 +222,28 @@ document.getElementById('btConnect').onclick = async function() {
         const char = await service.getCharacteristic(PULSE_UUID);
         
         document.getElementById('intGpsBtn').classList.remove('active');
+        document.getElementById('intGpsBtn').style.backgroundColor = "#111";
         if(watchId) navigator.geolocation.clearWatch(watchId);
 
         char.addEventListener('characteristicvaluechanged', (e) => {
-            // 2. 実際にデータが届いたら赤にする
-            btn.style.backgroundColor = "var(--hrc-red)";
-            btn.style.color = "#fff";
-            btn.classList.add('active');
-
             const d = e.target.value;
             if (d.byteLength >= 13) {
                 const lat = d.getInt32(0, true) / 1000000;
                 const lon = d.getInt32(4, true) / 1000000;
                 currentSpeedKmh = d.getUint16(8, true);
+
+                // 2. 座標が 0 以外の有効な値になった時だけ赤くする
+                if (lat !== 0 || lon !== 0) {
+                    btn.style.backgroundColor = "var(--hrc-red)";
+                    btn.style.color = "#fff";
+                    btn.classList.add('active');
+                }
+
                 handlePositionUpdate(lat, lon, Date.now());
             }
         });
         await char.startNotifications();
     } catch (e) { 
-        // エラー（キャンセル等）が起きたら元に戻す
         btn.style.backgroundColor = "#111";
         btn.style.color = "#fff";
         console.log(e); 
