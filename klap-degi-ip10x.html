@@ -321,11 +321,41 @@ document.getElementById('startBtn').onclick = function() {
 document.getElementById('lapBtn').onclick = () => { if(swState===1) processLap(Date.now(), true); };
 
 document.getElementById('historyBtn').onclick = () => {
-    const bT = lapRecords.length > 0 ? Math.min(...lapRecords.map(r => r.time)) : 0;
-    document.getElementById('history-body').innerHTML = lapRecords.map(r => `
-        <tr><td>L${r.no}</td><td>${r.s1}</td><td>${r.s2}</td><td>${r.s3}</td><td>${r.s4}</td>
-        <td style="${r.time === bT ? 'color:var(--hrc-red);' : ''}">${timeFormat(r.time)}</td>
-        <td>${r.max}</td></tr>`).join('');
+    // 1. ラップ記録が1つもない場合の処理
+    if (lapRecords.length === 0) {
+        alert("ラップ履歴がありません");
+        return;
+    }
+
+    // 2. ベストラップのタイム（ms）を取得
+    const bT = Math.min(...lapRecords.map(r => r.time));
+    
+    // 3. テーブル（history-body）のHTMLを生成
+    document.getElementById('history-body').innerHTML = lapRecords.map(r => {
+        // 各値が存在しない（undefined）場合に "--.---" を表示する安全策
+        const s1 = r.s1 || "--.---";
+        const s2 = r.s2 || "--.---";
+        const s3 = r.s3 || "--.---";
+        const s4 = r.s4 || "--.---";
+        const maxSpd = r.max !== undefined ? r.max : "0";
+        
+        // ベストラップの場合は文字色を赤くし、太字にするスタイル
+        const isBest = (r.time === bT);
+        const timeStyle = isBest ? 'color:var(--hrc-red); font-weight:bold;' : '';
+
+        return `
+        <tr>
+            <td>L${r.no}</td>
+            <td>${s1}</td>
+            <td>${s2}</td>
+            <td>${s3}</td>
+            <td>${s4}</td>
+            <td style="${timeStyle}">${timeFormat(r.time)}</td>
+            <td style="color:var(--hrc-orange);">${maxSpd}</td>
+        </tr>`;
+    }).join('');
+    
+    // 4. 履歴ページを表示
     document.getElementById('history-page').style.display = 'block';
 };
 
@@ -335,28 +365,44 @@ document.getElementById('gpxBtn').onclick = async function() {
         return;
     }
 
-    // --- GPX文字列の生成 ---
+    // --- 1. ライン情報のメタデータを生成（解析ソフトの自動分割用） ---
+    let lineMeta = "";
+    if (lines.startLine) {
+        const l = lines;
+        // スタートライン（SL）
+        lineMeta = `[SL:${l.startLine.p1.lat},${l.startLine.p1.lon},${l.startLine.p2.lat},${l.startLine.p2.lon}]`;
+        // セクターライン（S1-S3）が存在すれば追加
+        if (l.s1Line) lineMeta += `[S1:${l.s1Line.p1.lat},${l.s1Line.p1.lon},${l.s1Line.p2.lat},${l.s1Line.p2.lon}]`;
+        if (l.s2Line) lineMeta += `[S2:${l.s2Line.p1.lat},${l.s2Line.p1.lon},${l.s2Line.p2.lat},${l.s2Line.p2.lon}]`;
+        if (l.s3Line) lineMeta += `[S3:${l.s3Line.p1.lat},${l.s3Line.p1.lon},${l.s3Line.p2.lat},${l.s3Line.p2.lon}]`;
+    }
+
+    // GPXヘッダー：metadata内にLINE_DATAを埋め込む
     let gpx = `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="KLAP_DEGI" xmlns="http://www.topografix.com/GPX/1/1">
-<trk><name>KLAP_${new Date().getTime()}</name>
-<trkseg>`; // セグメントをここで開始
+<metadata>
+    <desc>LINE_DATA:${lineMeta}</desc>
+</metadata>
+<trk><name>KLAP_${new Date().getTime()}</name>`;
 
-    // 全ラップのポイントを古い順から一つのセグメントにまとめる
-    // lapRecordsはunshiftで追加されているので、[...].reverse()で古い順（走行順）にする
+    // --- 2. ラップごとに <trkseg> で区切る（解析ソフトでの個別表示用） ---
+    // lapRecordsは新しい順なので、reverse()して走行順（古い順）に書き出す
     [...lapRecords].reverse().forEach(lap => {
         if (lap.points && lap.points.length > 0) {
+            gpx += `\n<trkseg>`; // ラップごとにセグメントを開始
             lap.points.forEach(p => {
                 gpx += `\n<trkpt lat="${p.lat}" lon="${p.lon}">
 <time>${p.time}</time>
 <extensions><speed>${(p.speed/3.6).toFixed(2)}</speed></extensions>
 </trkpt>`;
             });
+            gpx += `\n</trkseg>`; // ラップごとにセグメントを終了
         }
     });
 
-    gpx += `\n</trkseg>\n</trk>\n</gpx>`; // セグメントをここで閉じる
+    gpx += `\n</trk>\n</gpx>`;
 
-    // --- 以降、Bluefy / iOS 用の共有処理（変更なし） ---
+    // --- 3. 共有・保存処理 ---
     const filename = `klap_${new Date().getTime()}.gpx`;
     const blob = new Blob([gpx], { type: 'application/gpx+xml' });
     const file = new File([blob], filename, { type: 'application/gpx+xml' });
@@ -366,7 +412,7 @@ document.getElementById('gpxBtn').onclick = async function() {
             await navigator.share({
                 files: [file],
                 title: 'KLAP GPX Data',
-                text: '走行ログを共有します'
+                text: '走行ログ（セクター情報込）を共有します'
             });
         } catch (err) {
             if (err.name !== 'AbortError') alert('共有に失敗しました: ' + err.message);
@@ -382,6 +428,7 @@ document.getElementById('gpxBtn').onclick = async function() {
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 };
+
 
 window.onload = () => {
     ['startLine', 's1Line', 's2Line', 's3Line'].forEach(key => {
