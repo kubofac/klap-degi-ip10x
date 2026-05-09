@@ -230,8 +230,8 @@ document.getElementById('btConnect').onclick = async function() {
         char.addEventListener('characteristicvaluechanged', (e) => {
             const d = e.target.value;
             if (d.byteLength >= 13) {
-                const lat = d.getInt32(0, true) / 1000000;
-                const lon = d.getInt32(4, true) / 1000000;
+                const lat = d.getInt32(0, true) / 10000000;
+                const lon = d.getInt32(4, true) / 10000000;
                 currentSpeedKmh = d.getUint16(8, true);
 
                 // 2. 座標が 0 以外の有効な値になった時だけ赤くする
