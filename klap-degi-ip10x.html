@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>KLAP DEGI 
-        
-        x12.6 - FINAL REVISION</title>
+    <title>KLAP DEGI x12.7 - FINAL REVISION</title>
     <style>
+         /* BLE再接続色変化 */
         :root { --hrc-red: #E4002B; --hrc-white: #ffffff; --bg-dark: #000000; --hrc-orange: #FFA500; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: var(--bg-dark); color: var(--hrc-white); font-family: 'Arial Black', sans-serif; overflow: hidden; position: fixed; }
         
@@ -120,7 +119,9 @@ let lines = { startLine: null, s1Line: null, s2Line: null, s3Line: null };
 let s1_abs = 0, s2_abs = 0, s3_abs = 0;
 let watchId = null, lapCounter = 0; 
 const cooldownMs = 15000;
-
+let bleDevice = null;
+let bleCharacteristic = null;
+let bleWatchdogTimeout = null;
 function handlePositionUpdate(currLat, currLon, now, acc = 0) {
     if (currLat === 0 && currLon === 0) return;
     document.getElementById('debug-lat').textContent = currLat.toFixed(6);
@@ -209,32 +210,39 @@ function updateLapList() {
 }
 
 // --- GPS / BLE 処理 ---
-document.getElementById('btConnect').onclick = async function() {
-    const btn = this;
-    try {
-        // 1. 接続試行中はオレンジ
-        btn.style.backgroundColor = "var(--hrc-orange)";
-        btn.style.color = "#000";
+// --- 【追加】BLEの表示リセット関数 ---
+function resetBleButtonVisual() {
+    const btn = document.getElementById('btConnect');
+    btn.style.backgroundColor = "#111";
+    btn.style.color = "#fff";
+    btn.classList.remove('active');
+}
 
-        const device = await navigator.bluetooth.requestDevice({ 
-            filters: [{ services: [SERVICE_UUID] }] 
-        });
-        const server = await device.gatt.connect();
+// --- 【追加】爆速自動再接続コアロジック ---
+async function connectToBleDevice() {
+    if (!bleDevice) return;
+    const btn = document.getElementById('btConnect');
+
+    try {
+        console.log("BLE接続試行中...");
+        const server = await bleDevice.gatt.connect();
         const service = await server.getPrimaryService(SERVICE_UUID);
-        const char = await service.getCharacteristic(PULSE_UUID);
-        
+        bleCharacteristic = await service.getCharacteristic(PULSE_UUID);
+
+        // 排他制御：内蔵GPS側を完全に停止・リセット
         document.getElementById('intGpsBtn').classList.remove('active');
         document.getElementById('intGpsBtn').style.backgroundColor = "#111";
-        if(watchId) navigator.geolocation.clearWatch(watchId);
+        if(watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; }
 
-        char.addEventListener('characteristicvaluechanged', (e) => {
+        // データ受信時の処理
+        bleCharacteristic.addEventListener('characteristicvaluechanged', (e) => {
             const d = e.target.value;
             if (d.byteLength >= 13) {
                 const lat = d.getInt32(0, true) / 10000000;
                 const lon = d.getInt32(4, true) / 10000000;
                 currentSpeedKmh = d.getUint16(8, true);
 
-                // 2. 座標が 0 以外の有効な値になった時だけ赤くする
+                // 座標が有効な値の時だけ「赤（ACTIVE）」にする
                 if (lat !== 0 || lon !== 0) {
                     btn.style.backgroundColor = "var(--hrc-red)";
                     btn.style.color = "#fff";
@@ -242,13 +250,56 @@ document.getElementById('btConnect').onclick = async function() {
                 }
 
                 handlePositionUpdate(lat, lon, Date.now());
+
+                // 【途絶監視】2秒間データストリームが来なければオレンジ（警告）に落とす
+                clearTimeout(bleWatchdogTimeout);
+                bleWatchdogTimeout = setTimeout(() => {
+                    console.warn("BLEデータが途絶しました（測位ロスまたはフリーズ）。");
+                    btn.style.backgroundColor = "var(--hrc-orange)";
+                    btn.style.color = "#000";
+                }, 2000);
             }
         });
-        await char.startNotifications();
+
+        await bleCharacteristic.startNotifications();
+
+        // 物理切断イベントの登録（重複登録を防ぐため一度消してから登録）
+        bleDevice.removeEventListener('gattserverdisconnected', onBleDisconnected);
+        bleDevice.addEventListener('gattserverdisconnected', onBleDisconnected);
+
+        console.log("BLE 接続成功");
+
+    } catch (error) {
+        console.warn("BLE接続失敗。0.5秒後に自動再試行します...", error);
+        setTimeout(connectToBleDevice, 500); // 接続できるまで0.5秒周期でループ
+    }
+}
+
+// --- 【追加】物理的切断（圏外・電源オフ等）時のハンドラ ---
+function onBleDisconnected() {
+    console.error("BLEの物理的切断を検知。自動再接続を開始します。");
+    clearTimeout(bleWatchdogTimeout);
+    resetBleButtonVisual(); // ボタンをグレーに戻す
+    
+    setTimeout(connectToBleDevice, 500); // 0.5秒後に再接続処理を起動
+}
+
+// --- 【修正】BLEボタンを押したときの挙動 ---
+document.getElementById('btConnect').onclick = async function() {
+    const btn = this;
+    try {
+        if (!bleDevice) {
+            // 初回タップ時のみ、ペアリングデバイスの選択プロンプトを出す
+            btn.style.backgroundColor = "var(--hrc-orange)";
+            btn.style.color = "#000";
+            bleDevice = await navigator.bluetooth.requestDevice({ 
+                filters: [{ services: [SERVICE_UUID] }] 
+            });
+        }
+        await connectToBleDevice();
     } catch (e) { 
-        btn.style.backgroundColor = "#111";
-        btn.style.color = "#fff";
-        console.log(e); 
+        resetBleButtonVisual();
+        console.log("BLE接続がキャンセルまたは失敗しました。", e); 
     }
 };
 
