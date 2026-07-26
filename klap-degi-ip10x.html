@@ -350,7 +350,7 @@ function mainLoop() {
     if (swState === 1) {
         document.getElementById('display').textContent = "TOTAL " + timeFormat(now - startTime);
         const d1 = document.getElementById('display1');
-        if (isFrozen && now < freezeUntil) { d1.textContent = freezeDisplayTime; d1.style.color = "var(--hrc-orange)"; }
+        if (isFrozen && now < freezeUntil) { d1.textContent = freezeDisplayTime; d1.style.color = "var(white)"; }
         else { d1.textContent = timeFormat(now - (lapStartTime || startTime)); d1.style.color = "white"; isFrozen = false; }
     }
     document.getElementById('speed_val').textContent = Math.round(currentSpeedKmh);
