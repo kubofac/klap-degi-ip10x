@@ -22,18 +22,18 @@
         .best-label { font-size: 2.2vh; color: var(--hrc-red); margin-right: 15px; }
 
         /* 右側パネル：ご提示のスタイルを適用 */
-        .right-section-wrapper { position: absolute; right: 20px; top: 15px; bottom: 85px; display: flex; gap: 15px; align-items: flex-start; z-index: 6; pointer-events: none; }
-        #lap-panel { width: 150px; height: 100%; display: flex; flex-direction: column; }
-        #lap { flex: 1; overflow-y: auto; scrollbar-width: none; pointer-events: auto; text-align: right; }
-        
-        .lap-row { display: flex; justify-content: flex-end; align-items: baseline; gap: 15px; padding: 6px 0; border-bottom: 1px solid #222; font-size: 22px; }
-        .lap-row span:first-child { color: #888; font-size: 22px; font-weight: normal; } /* L番号 */
-        .lap-row span:last-child { font-family: 'Arial Black', sans-serif; min-width: 110px; text-align: right; } /* タイム */
-        .best-lap { color: var(--hrc-red) !important; font-weight: bold; }
+       .right-section-wrapper { position: absolute; right: 15px; top: 15px; bottom: 85px; display: flex; gap: 20px; align-items: stretch; z-index: 6; pointer-events: none; }
+      #lap-panel { flex: 1; height: 100%; display: flex; flex-direction: column; min-width: 0; }
+       #lap { flex: 1; overflow-y: auto; scrollbar-width: none; pointer-events: auto; text-align: right; }
+     
+       .lap-row { display: flex; justify-content: flex-end; align-items: baseline; gap: 10px; padding: 4px 0; border-bottom: 1px solid #222; font-size: 2.8vw; white-space: nowrap; }
+      .lap-row span:first-child { color: #888; font-weight: normal; } /* L番号 */
+       .lap-row span:last-child { font-family: 'Arial Black', sans-serif; text-align: right; } /* タイム */
+     .best-lap { color: var(--hrc-red) !important; font-weight: bold; }
 
-        .data-column { min-width: 90px; }
-        .label { font-size: 11px; color: var(--hrc-red); font-weight: bold; }
-        .val { font-size: 42px; font-weight: 900; line-height: 0.85; }
+     .data-column { width: 90px; flex-shrink: 0; display: flex; flex-direction: column; gap: 15px; }
+  .label { font-size: 11px; color: var(--hrc-red); font-weight: bold; }
+.val { font-size: 42px; font-weight: 900; line-height: 0.85; }
 
         /* デバッグ情報：画面下部に目立たないよう配置 */
         #debug-info { position: fixed; bottom: 65px; left: 10px; font-family: monospace; font-size: 10px; color: #444; z-index: 10; pointer-events: none; }
