@@ -8,9 +8,8 @@
     <link rel="manifest" href="/manifest.json">  
     <style>
         body { font-family: sans-serif; padding: 10px; background-color: #f0f0f0; margin: 0; }
-       #map-container { position: relative; width: 94%; height: 350px; margin: 10px auto; }
-#mapid { height: 100%; width: 100%; border-radius: 8px; z-index: 1; }
-      
+        #map-container { position: relative; width: 94%; margin: 10px auto; }
+        #mapid { height: 350px; width: 100%; border-radius: 8px; z-index: 1; }
         
         #map-controls { 
             position: absolute; top: 10px; right: 10px; z-index: 1000; 
@@ -36,7 +35,7 @@
     </style>
 </head>
 <body>
-    <h2 style="text-align:center;">KLAP USB iphone Ver3.0</h2>
+    <h2 style="text-align:center;">KLAP USB Ver3.0</h2>
     <p id="instructionMessage">現在地を取得中...</p>
 
     <div id="map-container">
@@ -67,7 +66,11 @@
         <button class="nav-button" onclick="location.href='klap-degi-ip10xw.html'">ラップタイマー画面（白）へ移動</button>
     </div>
 
-  
+    <div class="control-group">
+        <label>USB-GPS 接続設定:</label>
+        <button id="usbTestBtn" style="background-color: #6c757d;">USB GPS 接続テストと保存</button>
+        <div id="usbStatus" class="result-text">未設定</div>
+    </div>
 
     <div class="control-group">
         <label>サーキットプリセット読込:</label>
