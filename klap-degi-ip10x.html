@@ -104,6 +104,12 @@
 </div>
 
 <script>
+// 計測画面側の冒頭に追加（未認証なら設定画面へ強制送還）
+if (localStorage.getItem('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855') !== "ここにTARGET_HASHと同じ文字列を入れる") {
+    alert("認証が必要です。設定画面からパスワードを入力してください。");
+    location.href = "index.html"; 
+}
+    
 'use strict';
 
 const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
