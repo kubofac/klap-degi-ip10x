@@ -33,9 +33,34 @@
         
         .target-selector { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; background: #f8f9fa; padding: 10px; border-radius: 5px; border: 1px solid #ddd; }
         .target-selector label { display: flex; align-items: center; gap: 5px; cursor: pointer; margin-bottom: 0; font-size: 13px; }
+   /* パスワード認証画面のスタイル */
+#authOverlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.85); z-index: 9999;
+    display: flex; justify-content: center; align-items: center;
+}
+.auth-box {
+    background: white; padding: 30px; border-radius: 8px; width: 90%; max-width: 350px; text-align: center;
+}
+.auth-box h3 { margin-top: 0; color: #333; }
+.auth-box input { width: 100%; padding: 12px; margin-bottom: 15px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+.auth-box button { width: 100%; padding: 12px; background: #2196F3; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; }
+.auth-error { color: #d9534f; font-size: 13px; margin-top: 10px; display: none; }
+    
     </style>
 </head>
 <body>
+<!-- パスワード認証オーバーレイ -->
+<div id="authOverlay">
+    <div class="auth-box">
+        <h3>パスワードを入力</h3>
+        <p style="font-size: 13px; color: #666; margin-bottom: 15px;">このツールを開くにはパスワードが必要です。</p>
+        <input type="password" id="passInput" placeholder="パスワード">
+        <button onclick="checkPassword()">認証する</button>
+        <div id="authError" class="auth-error">パスワードが違います。</div>
+    </div>
+</div>
+    
     <h2 style="text-align:center;">KLAP USB iphone Ver3.1</h2>
     <p id="instructionMessage">現在地を取得中...</p>
 
@@ -392,6 +417,45 @@ function initMap() {
                     .catch(err => console.log('SW Register Failed!', err));
             });
         }
+// パスワード設定（お好みの文字列に変更してください）
+// 設定したいパスワードをSHA-256変換した文字列（以下は "klap2026" の実際のSHA-256値）
+const TARGET_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"; // ← 実際のハッシュ値に書き換え
+
+// 文字列をSHA-256ハッシュに変換する関数
+async function sha256(text) {
+    const uint8  = new TextEncoder().encode(text);
+    const digest = await crypto.subtle.digest('SHA-256', uint8);
+    return Array.from(new Uint8Array(digest)).map(v => v.toString(16).padStart(2,'0')).join('');
+}
+
+async function checkPassword() {
+    const inputVal = document.getElementById('passInput').value.trim();
+    const inputHash = await sha256(inputVal);
+
+    if (inputHash === TARGET_HASH) {
+        document.getElementById('authOverlay').style.display = 'none';
+        // localStorageに保存（スマホのブラウザを閉じても次回から入力不要）
+        localStorage.setItem('klap_auth_v1', TARGET_HASH);
+    } else {
+        document.getElementById('authError').style.display = 'block';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // すでに認証済み（かつ現在のパスワードハッシュと一致）ならロック解除
+    if (localStorage.getItem('klap_auth_v1') === TARGET_HASH) {
+        document.getElementById('authOverlay').style.display = 'none';
+    }
+
+    const passInput = document.getElementById('passInput');
+    if (passInput) {
+        passInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') checkPassword();
+        });
+    }
+});
+
+        
     </script>
 </body>
 </html>
