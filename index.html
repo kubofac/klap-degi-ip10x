@@ -121,32 +121,26 @@
     <script src="circuit_data.js"></script>
 
     <script>
-        // パスワード設定（"klap2026" のSHA-256ハッシュ値）
-        const TARGET_HASH = "7c55cbcd38827fa1e5d7ae615170d102e7cb3594191d4e062ee99577c2299cd1";
+        // パスワード設定（"klap2026" をBase64エンコードしたもの）
+        const TARGET_TOKEN = "a2xhcDIwMjY="; // "klap2026" のBase64
 
-        // 文字列をSHA-256ハッシュに変換する関数
-        async function sha256(text) {
-            const uint8  = new TextEncoder().encode(text);
-            const digest = await crypto.subtle.digest('SHA-256', uint8);
-            return Array.from(new Uint8Array(digest)).map(v => v.toString(16).padStart(2,'0')).join('');
-        }
-
-        async function checkPassword() {
+        function checkPassword() {
             const inputVal = document.getElementById('passInput').value.trim();
-            const inputHash = await sha256(inputVal);
+            // 入力値をBase64に変換して比較（iOSのHTTP環境でも確実動作）
+            const inputToken = btoa(unescape(encodeURIComponent(inputVal)));
 
-            if (inputHash === TARGET_HASH) {
+            if (inputToken === TARGET_TOKEN) {
                 document.getElementById('authOverlay').style.display = 'none';
-                localStorage.setItem('klap_auth_v1', TARGET_HASH);
+                localStorage.setItem('klap_auth_v1', TARGET_TOKEN);
             } else {
                 document.getElementById('authError').style.display = 'block';
             }
         }
 
         // ページ読み込み時に即座に認証チェックとイベント登録を行う
-        (async function() {
+        (function() {
             const overlay = document.getElementById('authOverlay');
-            if (localStorage.getItem('klap_auth_v1') === TARGET_HASH) {
+            if (localStorage.getItem('klap_auth_v1') === TARGET_TOKEN) {
                 overlay.style.display = 'none';
             } else {
                 overlay.style.display = 'flex';
@@ -434,7 +428,7 @@
                     }
                 });
                 displayStatus();
-                alert("全てのラインをクリアしました。");
+                alert("すべてのラインをクリアしました。");
             }
         };
 
