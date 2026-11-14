@@ -105,7 +105,7 @@
 
 <script>
 // 計測画面側の冒頭に追加（未認証なら設定画面へ強制送還）
-if (localStorage.getItem('7c55cbcd38827fa1e5d7ae615170d102e7cb3594191d4e062ee99577c2299cd1') !== "ここにTARGET_HASHと同じ文字列を入れる") {
+if (localStorage.getItem('klap_auth_v1') !== "a2xhcDIwMjY=") {
     alert("認証が必要です。設定画面からパスワードを入力してください。");
     location.href = "index.html"; 
 }
