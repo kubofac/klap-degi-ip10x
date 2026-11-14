@@ -34,8 +34,8 @@
         .target-selector { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; background: #f8f9fa; padding: 10px; border-radius: 5px; border: 1px solid #ddd; }
         .target-selector label { display: flex; align-items: center; gap: 5px; cursor: pointer; margin-bottom: 0; font-size: 13px; }
 
-/* パスワード認証画面のスタイル */
-#authOverlay {
+        /* パスワード認証画面のスタイル */
+        #authOverlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.85); z-index: 9999;
             display: flex; justify-content: center; align-items: center;
@@ -47,20 +47,19 @@
         .auth-box input { width: 100%; padding: 12px; margin-bottom: 15px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         .auth-box button { width: 100%; padding: 12px; background: #2196F3; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; }
         .auth-error { color: #d9534f; font-size: 13px; margin-top: 10px; display: none; }
-     </style>
+    </style>
 </head>
 <body>
-<!-- パスワード認証オーバーレイ -->
-
-<div id="authOverlay" style="display: none;">
-    <div class="auth-box">
-        <h3>パスワードを入力</h3>
-        <p style="font-size: 13px; color: #666; margin-bottom: 15px;">このツールを開くにはパスワードが必要です。</p>
-        <input type="password" id="passInput" placeholder="パスワード">
-        <button id="authBtn">認証する</button>
-        <div id="authError" class="auth-error">パスワードが違います。</div>
+    <!-- パスワード認証オーバーレイ -->
+    <div id="authOverlay" style="display: none;">
+        <div class="auth-box">
+            <h3>パスワードを入力</h3>
+            <p style="font-size: 13px; color: #666; margin-bottom: 15px;">このツールを開くにはパスワードが必要です。</p>
+            <input type="password" id="passInput" placeholder="パスワード">
+            <button id="authBtn">認証する</button>
+            <div id="authError" class="auth-error">パスワードが違います。</div>
+        </div>
     </div>
-</div>
     
     <h2 style="text-align:center;">KLAP USB iphone Ver3.1</h2>
     <p id="instructionMessage">現在地を取得中...</p>
@@ -122,69 +121,55 @@
     <script src="circuit_data.js"></script>
 
     <script>
+        // パスワード設定（"klap2026" のSHA-256ハッシュ値）
+        const TARGET_HASH = "7c55cbcd38827fa1e5d7ae615170d102e7cb3594191d4e062ee99577c2299cd1";
 
-
-    // パスワード設定（"klap2026" のSHA-256ハッシュ値）
-    const TARGET_HASH = "7c55cbcd38827fa1e5d7ae615170d102e7cb3594191d4e062ee99577c2299cd1";
-
-    // 文字列をSHA-256ハッシュに変換する関数
-    async function sha256(text) {
-        const uint8  = new TextEncoder().encode(text);
-        const digest = await crypto.subtle.digest('SHA-256', uint8);
-        return Array.from(new Uint8Array(digest)).map(v => v.toString(16).padStart(2,'0')).join('');
-    }
-
-    async function checkPassword() {
-        const inputVal = document.getElementById('passInput').value.trim();
-        const inputHash = await sha256(inputVal);
-
-        if (inputHash === TARGET_HASH) {
-            document.getElementById('authOverlay').style.display = 'none';
-            localStorage.setItem('klap_auth_v1', TARGET_HASH);
-        } else {
-            document.getElementById('authError').style.display = 'block';
-        }
-    }
-
-    // ページ読み込み時に即座に認証チェックとイベント登録を行う
-    (async function() {
-        const overlay = document.getElementById('authOverlay');
-        if (localStorage.getItem('klap_auth_v1') === TARGET_HASH) {
-            overlay.style.display = 'none';
-        } else {
-            overlay.style.display = 'flex';
+        // 文字列をSHA-256ハッシュに変換する関数
+        async function sha256(text) {
+            const uint8  = new TextEncoder().encode(text);
+            const digest = await crypto.subtle.digest('SHA-256', uint8);
+            return Array.from(new Uint8Array(digest)).map(v => v.toString(16).padStart(2,'0')).join('');
         }
 
-        document.getElementById('authBtn').onclick = checkPassword;
-        document.getElementById('passInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') checkPassword();
-        });
-    })();
+        async function checkPassword() {
+            const inputVal = document.getElementById('passInput').value.trim();
+            const inputHash = await sha256(inputVal);
 
-    // （以下、既存のマップ初期化や関数群が続きます）
+            if (inputHash === TARGET_HASH) {
+                document.getElementById('authOverlay').style.display = 'none';
+                localStorage.setItem('klap_auth_v1', TARGET_HASH);
+            } else {
+                document.getElementById('authError').style.display = 'block';
+            }
+        }
 
+        // ページ読み込み時に即座に認証チェックとイベント登録を行う
+        (async function() {
+            const overlay = document.getElementById('authOverlay');
+            if (localStorage.getItem('klap_auth_v1') === TARGET_HASH) {
+                overlay.style.display = 'none';
+            } else {
+                overlay.style.display = 'flex';
+            }
 
+            document.getElementById('authBtn').onclick = checkPassword;
+            document.getElementById('passInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') checkPassword();
+            });
+        })();
 
-
-
-
-
-
-
-
-        
         let map, startMarker, endMarker, currentCircle;
         let p1Temp = null, p2Temp = null;
         let activeLines = { startLine: null, s1Line: null, s2Line: null, s3Line: null };
 
-function initMap() {
-    map = L.map('mapid').setView([35.68, 139.76], 15);
-    
-    // 国土地理院の最新オルソ（空中写真）タイルを指定
-    L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg', {
-        maxZoom: 18,
-        attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院</a>'
-    }).addTo(map);
+        function initMap() {
+            map = L.map('mapid').setView([35.68, 139.76], 15);
+            
+            // 国土地理院の最新オルソ（空中写真）タイルを指定
+            L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg', {
+                maxZoom: 18,
+                attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院</a>'
+            }).addTo(map);
 
             navigator.geolocation.getCurrentPosition(pos => {
                 const latlng = [pos.coords.latitude, pos.coords.longitude];
@@ -272,7 +257,6 @@ function initMap() {
         document.getElementById('btnP2').onclick = () => placeMarker('p2');
         document.getElementById('resetStorageButton').onclick = () => { if(confirm("全消去しますか？")) { localStorage.clear(); location.reload(); } };
 
-        // プルダウンメニューを生成・更新する関数
         function updateCircuitSelectMenu() {
             const select = document.getElementById('circuitSelect');
             if (!select) return;
@@ -469,9 +453,6 @@ function initMap() {
                     .catch(err => console.log('SW Register Failed!', err));
             });
         }
-
-
-        
     </script>
 </body>
 </html>
