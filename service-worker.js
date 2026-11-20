@@ -3,6 +3,7 @@ const urlsToCache = [
   '/',
   '/index.html',
   '/klap-degi-ip10x.html',
+  '/klap-degi-ip10xw.html',
   '/manifest.json',
   '/service-worker.js',
   '/192.png',
