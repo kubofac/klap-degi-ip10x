@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.kfactoryclub.klap_usb_ver3.twa",
+        "sha256_cert_fingerprints": ["83:21:68:11:1D:3F:8A:AC:9B:07:9F:7A:3F:1A:74:F4:90:E0:E1:F5:E7:E8:BE:9F:6C:F8:17:81:DE:C4:CA:CB"]
+      }
+    }]
